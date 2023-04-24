@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'"/>
+
+        <link rel="stylesheet" href="../node_modules/mathquill/build/mathquill.css"/>
+        <script src="../node_modules/jquery/dist/jquery.min.js"></script>
+        <script src="../node_modules/mathquill/build/mathquill.js"></script>
+        <script type="module" src="./renderer/renderer.js"></script>
+
+        <title>Math Editor</title>
+    </head>
+    <body>
+        <section id="editing-area" contenteditable="true" style="height: 200px; border: 2px solid black; display: inline-block; width: 100%;"></section>
+        <br>
+        <span id="problem2"></span>
+    </body>
+</html>
