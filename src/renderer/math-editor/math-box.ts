@@ -1,109 +1,122 @@
-import Cursor from "../../utils/cursor.js";
+import Caret from "../../utils/caret.js";
 import EditingArea from "./editing-area.js";
-import cursor from "../../utils/cursor.js";
 
 let MQ: MQ.MQ = MathQuill.getInterface(2);
 
-class InlineMathBox {
-    private static Fields: InlineMathBox[] = [];
-    private static FieldCount: number = 0;
+class MathBox {
+    private static mathBoxes: Map<string, MathBox> = new Map();
+    private static mathBoxCount: number = 0;
 
     private readonly fieldIndex: number;
     private readonly id: string;
-    private readonly editingArea: HTMLElement;
-    private readonly htmlEl: HTMLElement;
+    private readonly HTMLEl: HTMLElement;
     private readonly MQObj: MQ.MathField;
 
-    constructor(editingArea: HTMLElement) {
-        ++InlineMathBox.FieldCount;
-        InlineMathBox.Fields.push(this);
+    constructor() {
+        ++MathBox.mathBoxCount;
 
-        this.editingArea = editingArea;
-        this.fieldIndex = InlineMathBox.FieldCount;
+        this.fieldIndex = MathBox.mathBoxCount;
         this.id = `field${this.fieldIndex}`;
-        this.htmlEl = document.createElement("span");
-        this.htmlEl.setAttribute("id", this.id);
-        this.htmlEl.setAttribute("contenteditable", "true");
-        getSelection().getRangeAt(0).insertNode(this.htmlEl);
+        this.HTMLEl = document.createElement("span");
+        this.HTMLEl.setAttribute("id", this.id);
+        this.HTMLEl.setAttribute("contenteditable", "false");
 
-        this.MQObj = MQ.MathField(this.htmlEl, {
+        EditingArea.addNodeToCaretPos(this.HTMLEl);
+
+        this.MQObj = MQ.MathField(this.HTMLEl, {
             handlers: {
                 moveOutOf: (direction: number, _: MQ.MathField): void => {
-                    if (direction === MQ.R) {
-                        Cursor.setCursorAfter(this.htmlEl);
-                    } else if (direction === MQ.L) {
-                        Cursor.setCursorBefore(this.htmlEl);
-                    }
+                    setTimeout((): void => {
+                            if (direction === MQ.R) {
+                                Caret.setAfter(this.HTMLEl);
+                            } else if (direction === MQ.L) {
+                                Caret.setBefore(this.HTMLEl);
+                            }
+                        }, 0);
                 },
                 deleteOutOf: (direction: number, _: MQ.MathField): void => {
-                    Cursor.setCursorBefore(this.getHtmlEl());
+                    Caret.setBefore(this.getHTMLEl());
                     this.destroy();
                 },
                 upOutOf: (_: MQ.MathField): void => {
-                    let [node, offset]: [Node, number] = EditingArea.getClosestCaretLocationForLine(
-                        EditingArea.getPreviousLine()
-                    );
-                    if (node instanceof HTMLElement) {
-                        if (offset === -1) {
-                            cursor.setCursorAfter(node);
-                        } else {
-                            cursor.setCursorBefore(node);
-                        }
-                    } else if (node instanceof Text) {
-                        cursor.setCursorAt(node, offset);
+                    let previousLine: Node[] = Caret.getPreviousLine();
+                    if (previousLine && previousLine.length > 0) {
+                        Caret.setAtClosestNodeOn(previousLine);
+                    }
+                },
+                downOutOf: (_: MQ.MathField): void => {
+                    let nextLine: Node[] = Caret.getNextLine();
+                    if (nextLine && nextLine.length > 0) {
+                        Caret.setAtClosestNodeOn(nextLine);
                     }
                 }
             }
         });
-        this.MQObj.focus();
+        this.focus();
+
+        MathBox.mathBoxes.set(this.id, this);
     }
 
     private destroy(): void {
-        this.htmlEl.remove();
-        InlineMathBox.Fields.splice(this.fieldIndex, 1);
+        this.HTMLEl.remove();
+        MathBox.mathBoxes.delete(this.id);
     }
 
-    public static changeAttrOfAllFields(attr: string, value: string): void {
-        for (let mathField of InlineMathBox.Fields) {
-            mathField.getHtmlEl().setAttribute(attr, value);
+    public focus(caretPos?: number): void {
+        if (caretPos) {
+            this.MQObj.moveToDirEnd(caretPos);
         }
+        this.MQObj.focus();
     }
 
-    public static focusSelectedField(direction: number): void {
-        const selection: Selection = getSelection();
-        for (let mathField of InlineMathBox.Fields) {
-            let rangeParent: Node = selection.getRangeAt(0).commonAncestorContainer;
-            let mathBoxVisibleContent = mathField.getHtmlEl().childNodes[1].childNodes;
-/*            if (rangeParent instanceof Element &&
-                (rangeParent.className === "mq-textarea" || rangeParent.className === "mq-root-block mq-empty")) {*/
-            if (mathField.getHtmlEl().contains(rangeParent)
-                && (!(mathBoxVisibleContent.length > 0)
-                    || rangeParent !== mathBoxVisibleContent[mathBoxVisibleContent.length - 1])) {
-                if (direction) {
-                    mathField.getMQObj().moveToDirEnd(direction);
-                }
-
-                mathField.getMQObj().focus();
-                break;
-            }
-        }
+    public getHTMLEl(): HTMLElement {
+        return this.HTMLEl;
     }
 
-    public getHtmlEl(): HTMLElement {
-        return this.htmlEl;
+    public getContentEls(): NodeListOf<HTMLElement> {
+        return this.HTMLEl.childNodes[1].childNodes as NodeListOf<HTMLElement>;
     }
 
     public getMQObj(): MQ.MathField {
         return this.MQObj;
     }
 
-    public getEditingArea(): HTMLElement {
-        return this.editingArea;
+    public static getMathBox(id: string): MathBox {
+        return this.mathBoxes.get(id);
     }
 
-    public static getFields(): InlineMathBox[] {
-        return this.Fields;
+    public static getMathBoxes(): MathBox[] {
+        return Array.from(MathBox.mathBoxes.values());
+    }
+
+    public static isMathBoxOrItsChild(node: Node): node is HTMLElement {
+        return node instanceof HTMLElement
+            && Array.from(MathBox.mathBoxes.values()).some(mathBox => mathBox.HTMLEl.contains(node));
+    }
+
+    public static isAnyMathBoxFocused(): boolean {
+        return MathBox.isMathBoxOrItsChild(document.activeElement.parentNode);
+    }
+
+    public static getMathBoxesBeforeBRs(): MathBox[] {
+        let mathBoxesBeforeBRs: MathBox[] = [];
+
+        for (let mathBox of MathBox.getMathBoxes()) {
+            if (mathBox.HTMLEl.previousSibling && mathBox.HTMLEl.previousSibling.nodeName === "BR") {
+                mathBoxesBeforeBRs.push(mathBox);
+            }
+        }
+
+        return mathBoxesBeforeBRs;
+    }
+
+    public static removeMathBoxesNotInDOM(): void {
+        for (let mathBox of MathBox.mathBoxes.values()) {
+            if (!mathBox.HTMLEl.isConnected) {
+                mathBox.destroy();
+            }
+        }
     }
 }
 
-export default InlineMathBox;
+export default MathBox;
