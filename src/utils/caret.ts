@@ -1,11 +1,9 @@
-import UtilMethods from "../../utils/util-methods.js"
+import UtilMethods from "./util-methods.js";
 
-// Credit to Liam (Stack Overflow)
-// https://stackoverflow.com/a/41034697/3480193
 class Cursor {
-    static setCursorBefore(node) {
-        let range = new Range();
-        let selection = getSelection();
+    public static setCursorBefore(node: Node): void {
+        let range: Range = new Range();
+        let selection: Selection = getSelection();
 
         range.setStartBefore(node);
         range.collapse(true);
@@ -13,18 +11,44 @@ class Cursor {
         selection.addRange(range);
     }
 
-    static setCursorAfter(node) {
-        let range = new Range();
-        let selection = getSelection();
+    public static setCursorAfter(node: Node): void {
+        let range: Range = new Range();
+        let selection: Selection = getSelection();
 
         range.setStartAfter(node);
         range.collapse(true);
         selection.removeAllRanges();
         selection.addRange(range);
     }
-    /*
+
+    public static setCursorAt(textNode: Text, offset: number): void {
+        let range: Range = new Range();
+        let selection: Selection = getSelection();
+
+        range.setStart(textNode, offset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    public static getCaretGlobalX(): number {
+        let range: Range = getSelection().getRangeAt(0),
+            selectedNode: Node = range.startContainer,
+            offset: number = range.startOffset;
+
+        if (range.startContainer instanceof HTMLElement && range.startContainer.className === "mq-textarea") {
+            selectedNode = document.getElementsByClassName("mq-cursor")[0];
+            offset = 0;
+        }
+
+        return UtilMethods.getNodePos(selectedNode, offset);
+    }
+
+    public isCaretAtTheRightEndOfATextNode
+
+/*
     static getCurrentCursorPosition(parentElement) {
-        var selection = window.getSelection(),
+        let selection = window.getSelection(),
             charCount = -1,
             node;
 
@@ -52,12 +76,13 @@ class Cursor {
 
         return charCount;
     }
+*/
 
-    static setCurrentCursorPosition(chars, element) {
+ /*   static setCurrentCursorPosition(chars, element) {
         if (chars >= 0) {
             var selection = window.getSelection();
 
-            let range = Cursor.#createRange(element, { count: chars });
+            let range = Cursor.createRange(element, { count: chars });
 
             if (range) {
                 range.collapse(false);
@@ -67,7 +92,7 @@ class Cursor {
         }
     }
 
-    static #createRange(node, chars, range) {
+    static createRange(node, chars, range) {
         if (!range) {
             range = document.createRange()
             range.selectNode(node);
@@ -85,8 +110,8 @@ class Cursor {
                     chars.count = 0;
                 }
             } else {
-                for (var lp = 0; lp < node.childNodes.length; lp++) {
-                    range = Cursor._createRange(node.childNodes[lp], chars, range);
+                for (let lp = 0; lp < node.childNodes.length; lp++) {
+                    range = Cursor.createRange(node.childNodes[lp], chars, range);
 
                     if (chars.count === 0) {
                     break;
@@ -96,8 +121,7 @@ class Cursor {
         }
 
         return range;
-    }
-    */
+    }*/
 }
 
 export default Cursor;
