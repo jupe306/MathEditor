@@ -1,1 +1,1 @@
-# W-Math – WYSIWYG math editor (work in progress)
+# W'Math – WYSIWYG math editor (work in progress)
